@@ -12,8 +12,11 @@ sem_t full;
 queue<arg_struct*> buffer;
 pthread_mutex_t mutexBuffer;
 
+bool run_command() {
+    if 
+}
 void* producer(void* args) {
-
+    // string line;
     while (true) {
         // wait until there is more than 0 empty slots so can fill it up
         sem_wait(&empty);
@@ -21,10 +24,11 @@ void* producer(void* args) {
         // locking to make sure no concurrent access of the buffer 
         pthread_mutex_lock(&mutexBuffer);
 
-        struct arg_struct args = {1};
+        // char num = line[1];  num-'0'
+        struct arg_struct args = {2};
 
-        int in_line = buffer.size() // waiting jobs 
-        cout << "push " << buffer.size() << endl;
+        int in_line = buffer.size(); // waiting jobs 
+        cout << "push " << args.n << " and size is " << buffer.size() << endl;
 
         // pass through n
         buffer.push(&args);
@@ -46,7 +50,7 @@ void* consumer(void* args) {
         void* argv = buffer.front();
         struct arg_struct *args = (struct arg_struct *) argv;
         cout << "read in " << args->n << endl;
-        Trans(n);
+        // Trans(n);
         buffer.pop();
 
         pthread_mutex_unlock(&mutexBuffer);
