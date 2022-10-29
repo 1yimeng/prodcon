@@ -5,4 +5,6 @@
 #include <iostream>
 #include <cstdio>
 
+#define FORMAT "%5.3f ID=%2u %4s %-10s %5s\n"
+
 void start_process(int thread_num, int id);

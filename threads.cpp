@@ -11,49 +11,52 @@ sem_t empty;
 sem_t full;
 queue<arg_struct> buffer;
 pthread_mutex_t mutexBuffer;
-int get_command(int thread_num) {
-    string line;
-    while (getline(cin, line) && !line.empty()) {
-        int num = line[1]-'0';
-        producer(num);
-        // if (line[0] == 'T') {
-        //     producer();
-        // } else if (line[0] == 'S') {
-        //     int num = line[1]-'0';
-        //     cout << "sleep for " << num << endl;
-        //     Sleep(num);
-        continue;
-    }
+pthread_mutex_t mutexFile;
+FILE* pFile;
 
+void open_file(int id) {
+    string file_name;
+    if (id == 0) {
+        file_name = "prodcon.log";
+    } else {
+        file_name = "prodcon." + to_string(id) + ".log";
+    }
+    const char* cfile_name = file_name.c_str();
+    pFile = fopen(cfile_name, "w");
 }
 
+void log_to_file(const char* command, int num) {
+    pthread_mutex_lock(&mutexFile);
+    fprintf(pFile, "%5.3f ID=%3u %5s %-10s %3u\n", 0.000, 1, "Q= 4",command,num);
+    pthread_mutex_unlock(&mutexFile);
+}
 
-void producer(int thread_num) {
-    string line;
-    while (getline(cin, line) && !line.empty()) {
-        // wait until there is more than 0 empty slots so can fill it up
-        sem_wait(&empty);
+void producer(int content) {
+    // wait until there is more than 0 empty slots so can fill it up
+    sem_wait(&empty);
 
-        // locking to make sure no concurrent access of the buffer 
-        pthread_mutex_lock(&mutexBuffer);
-        
-        int num = line[1]-'0';
-        struct arg_struct args = {num-'0'};
+    // locking to make sure no concurrent access of the buffer 
+    pthread_mutex_lock(&mutexBuffer);
+    
+    struct arg_struct args = {content};
 
-        // pass through n
-        buffer.push(args);
-        int in_line = buffer.size(); // waiting jobs 
-        cout << "push " << args.n << " and size is " << buffer.size() << endl;
+    // pass through n
+    buffer.push(args);
+    int in_line = buffer.size(); // waiting jobs 
+    // cout << "push " << args.n << " and size is " << buffer.size() << endl;
+    // string action = "push " + args.n;
+    // cout << action << endl;
+    // log_to_file(action);
 
-        pthread_mutex_unlock(&mutexBuffer);
-        // increment the items 
-        sem_post(&full);
+    pthread_mutex_unlock(&mutexBuffer);
+    // increment the items 
+    sem_post(&full);
+}
 
-        cout << line << endl;
-    }
-
+void closing(int thread_num) {
+    // send -1 for each thread to end consumers from reading
     for (int i = 0; i < thread_num; i++) {
-        // wait until there is more than 0 empty slots so can fill it up
+
         sem_wait(&empty);
         pthread_mutex_lock(&mutexBuffer);
 
@@ -64,7 +67,20 @@ void producer(int thread_num) {
         pthread_mutex_unlock(&mutexBuffer);
         sem_post(&full);
     }
+}
 
+void get_command(int thread_num) {
+    string line;
+    while (getline(cin, line) && !line.empty()) {
+        int num = line[1]-'0';
+        if (line[0] == 'T') {
+            producer(num);
+        } else if (line[0] == 'S') {
+            // cout << "sleep for " << num << endl;
+            Sleep(num);
+        }
+    }
+    closing(thread_num);
 }
 
 void* consumer(void* args) {
@@ -75,13 +91,15 @@ void* consumer(void* args) {
 
         // pass through n
         struct arg_struct argv = buffer.front();
-        cout << "read in " << argv.n << endl;
+        const char* action = "read haha";
         // Trans(n);
         buffer.pop();
         if (argv.n == -1) {
             pthread_mutex_unlock(&mutexBuffer);
             break;
         }
+        log_to_file(action, argv.n);
+        cout << "read in " << argv.n << endl;
         pthread_mutex_unlock(&mutexBuffer);
         // increment the empty variable since has taken one from buffer
         sem_post(&empty);
@@ -94,6 +112,7 @@ void start_process(int thread_num, int id) {
     struct arg_struct args;
     sem_init(&empty, 0, thread_num*2);
     sem_init(&full, 0, 0);
+    open_file(id);
 
     for (int i = 0; i < thread_num; i++) {
         // thread_num amount of consumers
@@ -102,7 +121,7 @@ void start_process(int thread_num, int id) {
         }
     }
 
-    producer(thread_num);
+    get_command(thread_num);
 
     for (int i = 0; i < thread_num; i++) {
         if (pthread_join(th[i], NULL) != 0) {
@@ -110,8 +129,10 @@ void start_process(int thread_num, int id) {
         }
     }
 
+    fclose(pFile);
     sem_destroy(&empty);
     sem_destroy(&full);
     pthread_mutex_destroy(&mutexBuffer);
+    pthread_mutex_destroy(&mutexFile);
 }
 
