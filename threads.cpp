@@ -15,6 +15,7 @@ pthread_mutex_t mutexBuffer;
 pthread_mutex_t mutexFile;
 FILE* pFile;
 high_resolution_clock::time_point start_time;
+pthread_mutex_t mutexSize;
 
 void open_file(int id) {
     string file_name;
@@ -32,17 +33,30 @@ double get_time() {
     return (double) duration_cast<milliseconds> (current - start_time).count() / (double) 1000;
 }
 
+int get_size() {
+    int qsize;
+    pthread_mutex_lock(&mutexSize);
+    qsize = (int) buffer.size();
+    pthread_mutex_unlock(&mutexSize);
+    return qsize;
+}
+
 void log_to_file(const char* command, int id, int arg_num) {
     double time_passed = get_time();
 
+    char q[] = "    ";
+    if (command == "Work" || command == "Receive") {
+        sprintf(q,"Q= %s", to_string(buffer.size()).c_str());
+    }
 
     char arg[] = "  ";
     if (arg_num != -1) {
         sprintf(arg, "%s", to_string(arg_num).c_str());
     } 
 
+    // lock to write to files to prevent concurrent access 
     pthread_mutex_lock(&mutexFile);
-    fprintf(pFile, "%5.3f ID=%3u %5s %-10s %3s\n", time_passed, id, "Q= 4", command, arg);
+    fprintf(pFile, "%5.3f ID=%3u %8s %-10s %3s\n", time_passed, id, q, command, arg);
     pthread_mutex_unlock(&mutexFile);
 }
 
@@ -161,5 +175,6 @@ void start_process(int thread_num, int id) {
     sem_destroy(&full);
     pthread_mutex_destroy(&mutexBuffer);
     pthread_mutex_destroy(&mutexFile);
+    pthread_mutex_destroy(&mutexSize);
 }
 
