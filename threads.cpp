@@ -2,6 +2,7 @@
 #include "tands.h"
 
 using namespace std;
+using namespace std::chrono;
 
 struct arg_struct {
     int n;
@@ -13,6 +14,7 @@ queue<arg_struct> buffer;
 pthread_mutex_t mutexBuffer;
 pthread_mutex_t mutexFile;
 FILE* pFile;
+high_resolution_clock::time_point start_time;
 
 void open_file(int id) {
     string file_name;
@@ -25,9 +27,22 @@ void open_file(int id) {
     pFile = fopen(cfile_name, "w");
 }
 
-void log_to_file(const char* command, int num) {
+double get_time() {
+    high_resolution_clock::time_point current = high_resolution_clock().now();
+    return (double) duration_cast<milliseconds> (current - start_time).count() / (double) 1000;
+}
+
+void log_to_file(const char* command, int id, int arg_num) {
+    double time_passed = get_time();
+
+
+    char arg[] = "  ";
+    if (arg_num != -1) {
+        sprintf(arg, "%s", to_string(arg_num).c_str());
+    } 
+
     pthread_mutex_lock(&mutexFile);
-    fprintf(pFile, "%5.3f ID=%3u %5s %-10s %3u\n", 0.000, 1, "Q= 4",command,num);
+    fprintf(pFile, "%5.3f ID=%3u %5s %-10s %3s\n", time_passed, id, "Q= 4", command, arg);
     pthread_mutex_unlock(&mutexFile);
 }
 
@@ -46,7 +61,8 @@ void producer(int content) {
     // cout << "push " << args.n << " and size is " << buffer.size() << endl;
     // string action = "push " + args.n;
     // cout << action << endl;
-    // log_to_file(action);
+    const char* action = "in haha";
+    log_to_file(action, 0, args.n);
 
     pthread_mutex_unlock(&mutexBuffer);
     // increment the items 
@@ -77,6 +93,8 @@ void get_command(int thread_num) {
             producer(num);
         } else if (line[0] == 'S') {
             // cout << "sleep for " << num << endl;
+            const char* action = "sleep haha";
+            log_to_file(action, 0, num);
             Sleep(num);
         }
     }
@@ -91,32 +109,41 @@ void* consumer(void* args) {
 
         // pass through n
         struct arg_struct argv = buffer.front();
-        const char* action = "read haha";
+        const char* action = "out haha";
         // Trans(n);
         buffer.pop();
         if (argv.n == -1) {
             pthread_mutex_unlock(&mutexBuffer);
             break;
         }
-        log_to_file(action, argv.n);
+        int id = *(int *) args;
+        log_to_file(action, id, argv.n);
         cout << "read in " << argv.n << endl;
         pthread_mutex_unlock(&mutexBuffer);
         // increment the empty variable since has taken one from buffer
+        log_to_file(action, id, -1);
         sem_post(&empty);
     }
     return nullptr;
 }
 
 void start_process(int thread_num, int id) {
+    start_time = high_resolution_clock().now();
     pthread_t th[thread_num];
     struct arg_struct args;
     sem_init(&empty, 0, thread_num*2);
     sem_init(&full, 0, 0);
     open_file(id);
 
+    // saving ids to reference 
+    int ids[thread_num];
+    for (int i = 0; i < thread_num; i++) {
+        ids[i] = i+1;
+    }
+
     for (int i = 0; i < thread_num; i++) {
         // thread_num amount of consumers
-        if (pthread_create(&th[i], NULL, &consumer, NULL) != 0) {
+        if (pthread_create(&th[i], NULL, &consumer, &ids[i]) != 0) {
             perror("Failed to create thread");
         }
     }

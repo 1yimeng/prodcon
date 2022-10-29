@@ -17,7 +17,6 @@ int main(int argc, char **argv) {
         cout << "Wrong number of arguments, use 2 or 1 arguments to run the program" << endl;
         exit(0);
     }
-
     start_process(thread_num, id);
     return 0;
 }

@@ -1,3 +1,8 @@
-0.000 ID=  1  Q= 4 read haha    3
-0.000 ID=  1  Q= 4 read haha    6
-0.000 ID=  1  Q= 4 read haha    3
+0.000 ID=  1  Q= 4 read haha    4
+0.000 ID=  1  Q= 4 read haha    2
+0.000 ID=  2  Q= 4 read haha    1
+0.000 ID=  3  Q= 4 read haha    1
+0.091 ID=  1  Q= 4 read haha    5
+0.101 ID=  3  Q= 4 read haha    1
+0.101 ID=  3  Q= 4 read haha    1
+0.101 ID=  3  Q= 4 read haha    1
