@@ -110,7 +110,7 @@ void log_summary(int thread_num, struct id_complete all_ids[]) {
     }
 
     double avg = (double) complete / get_time();
-    fprintf(pFile, "%15s\t%4.2f\n", "Transaction per second: ", avg);
+    fprintf(pFile, "%15s\t%4.2f\n", "Transactions per second: ", avg);
 }
 
 void get_command(int thread_num) {
