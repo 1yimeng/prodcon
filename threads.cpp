@@ -4,10 +4,6 @@
 using namespace std;
 using namespace std::chrono;
 
-struct arg_struct {
-    int n;
-};
-
 struct id_complete {
     int id;
     int complete;
@@ -15,7 +11,7 @@ struct id_complete {
 
 sem_t empty;
 sem_t full;
-queue<arg_struct> buffer;
+queue<int> buffer;
 pthread_mutex_t mutexBuffer;
 pthread_mutex_t mutexFile;
 pthread_mutex_t mutexSize;
@@ -76,11 +72,9 @@ void producer(int content) {
 
     // locking to make sure no concurrent access of the buffer 
     pthread_mutex_lock(&mutexBuffer);
-    
-    struct arg_struct args = {content};
 
     // pass through n
-    buffer.push(args);
+    buffer.push(content);
     log_to_file("Work", 0, content);
     work++; 
 
@@ -96,8 +90,7 @@ void closing(int thread_num) {
         sem_wait(&empty);
         pthread_mutex_lock(&mutexBuffer);
 
-        struct arg_struct args = {-1};
-        buffer.push(args);
+        buffer.push(-1);
 
         pthread_mutex_unlock(&mutexBuffer);
         sem_post(&full);
@@ -132,6 +125,7 @@ void get_command(int thread_num) {
             Sleep(num);
         }
     }
+    log_to_file("End", 0, -1);
     closing(thread_num);
 }
 
@@ -146,10 +140,10 @@ void* consumer(void* args) {
         pthread_mutex_lock(&mutexBuffer);
 
         // pass through n
-        struct arg_struct argv = buffer.front();
+        int n = buffer.front();
         buffer.pop();
 
-        if (argv.n == -1) {
+        if (n == -1) {
             pthread_mutex_unlock(&mutexBuffer);
             break;
         }
@@ -159,10 +153,10 @@ void* consumer(void* args) {
         // increment the empty variable since has taken one from buffer
         sem_post(&empty);
 
-        log_to_file("Receive", info->id, argv.n);
+        log_to_file("Receive", info->id, n);
         receive++;
-        Trans(argv.n);
-        log_to_file("Complete", info->id, argv.n);
+        Trans(n);
+        log_to_file("Complete", info->id, n);
         complete++;
         info->complete += 1;
     }
@@ -172,7 +166,6 @@ void* consumer(void* args) {
 void start_process(int thread_num, int id) {
     start_time = high_resolution_clock().now();
     pthread_t th[thread_num];
-    struct arg_struct args;
     sem_init(&empty, 0, thread_num*2);
     sem_init(&full, 0, 0);
     open_file(id);
