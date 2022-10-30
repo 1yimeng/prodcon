@@ -8,6 +8,11 @@ struct arg_struct {
     int n;
 };
 
+struct id_complete {
+    int id;
+    int complete;
+};
+
 sem_t empty;
 sem_t full;
 queue<arg_struct> buffer;
@@ -78,7 +83,6 @@ void producer(int content) {
     buffer.push(args);
     log_to_file("Work", 0, content);
     work++; 
-    cout << "read in " << args.n << endl;
 
     pthread_mutex_unlock(&mutexBuffer);
     // increment the items 
@@ -94,14 +98,13 @@ void closing(int thread_num) {
 
         struct arg_struct args = {-1};
         buffer.push(args);
-        cout << "push " << args.n;
 
         pthread_mutex_unlock(&mutexBuffer);
         sem_post(&full);
     }
 }
 
-void log_summary(int thread_num) {
+void log_summary(int thread_num, struct id_complete all_ids[]) {
     fprintf(pFile, "%s\n", "Summary:");
     fprintf(pFile, "%8s\t%3u\n", "Work", work);
     fprintf(pFile, "%7s\t\t%3u\n", "Ask", ask);
@@ -110,10 +113,11 @@ void log_summary(int thread_num) {
     fprintf(pFile, "%9s\t%3u\n", "Sleep", sleep);
 
     for (int i = 0; i < thread_num; i++) {
-        fprintf(pFile, "%10s\t%2u\t%3u\n", "Thread", i+1, 3);
+        fprintf(pFile, "%10s  %2u\t%3u\n", "Thread", i+1, all_ids[i].complete);
     }
 
-    fprintf(pFile, "%15s\t%4.2f\n", "Transaction per second: ", 0.232);
+    double avg = (double) complete / get_time();
+    fprintf(pFile, "%15s\t%4.2f\n", "Transaction per second: ", avg);
 }
 
 void get_command(int thread_num) {
@@ -133,8 +137,8 @@ void get_command(int thread_num) {
 
 void* consumer(void* args) {
     while (true) {
-        int id = *(int *) args;
-        log_to_file("Ask", id, -1);
+        struct id_complete* info = (struct id_complete *) args;
+        log_to_file("Ask", info->id, -1);
         ask++; 
 
         //wait until items is more than 0 so can take from buffer
@@ -149,17 +153,18 @@ void* consumer(void* args) {
             pthread_mutex_unlock(&mutexBuffer);
             break;
         }
-        cout << "read in " << argv.n << endl;
+
         pthread_mutex_unlock(&mutexBuffer);
 
         // increment the empty variable since has taken one from buffer
         sem_post(&empty);
 
-        log_to_file("Receive", id, argv.n);
+        log_to_file("Receive", info->id, argv.n);
         receive++;
         Trans(argv.n);
-        log_to_file("Complete", id, argv.n);
+        log_to_file("Complete", info->id, argv.n);
         complete++;
+        info->complete += 1;
     }
     return nullptr;
 }
@@ -173,14 +178,15 @@ void start_process(int thread_num, int id) {
     open_file(id);
 
     // saving ids to reference 
-    int ids[thread_num];
+    struct id_complete all_ids[thread_num];
     for (int i = 0; i < thread_num; i++) {
-        ids[i] = i+1;
+        all_ids[i].id = i+1;
+        all_ids[i].complete = 0;
     }
 
     for (int i = 0; i < thread_num; i++) {
         // thread_num amount of consumers
-        if (pthread_create(&th[i], NULL, &consumer, &ids[i]) != 0) {
+        if (pthread_create(&th[i], NULL, &consumer, &all_ids[i]) != 0) {
             perror("Failed to create thread");
         }
     }
@@ -193,9 +199,7 @@ void start_process(int thread_num, int id) {
         }
     }
 
-    pthread_mutex_lock(&mutexFile);
-    log_summary(thread_num);
-    pthread_mutex_unlock(&mutexFile);
+    log_summary(thread_num, all_ids);
 
     fclose(pFile);
     sem_destroy(&empty);
