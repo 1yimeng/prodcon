@@ -166,11 +166,11 @@ void* consumer(void* args) {
 void start_process(int thread_num, int id) {
     start_time = high_resolution_clock().now();
     pthread_t th[thread_num];
-    sem_init(&empty, 0, thread_num*2);
-    sem_init(&full, 0, 0);
+    sem_init(&empty, 0, thread_num*2); // init empty spaces as thread_num*2
+    sem_init(&full, 0, 0); // init items in buffer as zero
     open_file(id);
 
-    // saving ids to reference 
+    // saving ids and completed number to reference 
     struct id_complete all_ids[thread_num];
     for (int i = 0; i < thread_num; i++) {
         all_ids[i].id = i+1;

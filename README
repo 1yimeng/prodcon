@@ -1,0 +1,2 @@
+ACKNOWLEDGEMENT 
+I have consulted a few online resources, including this Youtube video by CodeVult, https://www.youtube.com/watch?v=l6zkaJFjUbM&t=1198s, multiple stackOverflow threads about c++ syntax and man pages on how to use functions like sem_wait(), sem_post(), etc. 
