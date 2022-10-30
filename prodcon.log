@@ -1,8 +1,21 @@
-0.000 ID=  1  Q= 4 read haha    4
-0.000 ID=  1  Q= 4 read haha    2
-0.000 ID=  2  Q= 4 read haha    1
-0.000 ID=  3  Q= 4 read haha    1
-0.091 ID=  1  Q= 4 read haha    5
-0.101 ID=  3  Q= 4 read haha    1
-0.101 ID=  3  Q= 4 read haha    1
-0.101 ID=  3  Q= 4 read haha    1
+0.001 ID=  1          Ask           
+0.001 ID=  3          Ask           
+0.001 ID=  2          Ask           
+1.407 ID=  0     Q= 1 Work         3
+1.407 ID=  1     Q= 0 Receive      3
+1.420 ID=  1          Complete     3
+1.420 ID=  1          Ask           
+3.890 ID=  0     Q= 1 Work         3
+3.890 ID=  3     Q= 0 Receive      3
+3.897 ID=  3          Complete     3
+3.897 ID=  3          Ask           
+Summary:
+    Work	  2
+    Ask		  5
+    Receive	  2
+    Complete	  2
+    Sleep	  0
+    Thread	 1	  3
+    Thread	 2	  3
+    Thread	 3	  3
+Transaction per second: 	0.23

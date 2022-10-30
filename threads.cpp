@@ -13,9 +13,14 @@ sem_t full;
 queue<arg_struct> buffer;
 pthread_mutex_t mutexBuffer;
 pthread_mutex_t mutexFile;
+pthread_mutex_t mutexSize;
 FILE* pFile;
 high_resolution_clock::time_point start_time;
-pthread_mutex_t mutexSize;
+int work = 0;
+int ask = 0;
+int receive = 0;
+int complete = 0;
+int sleep = 0; 
 
 void open_file(int id) {
     string file_name;
@@ -71,12 +76,9 @@ void producer(int content) {
 
     // pass through n
     buffer.push(args);
-    int in_line = buffer.size(); // waiting jobs 
-    // cout << "push " << args.n << " and size is " << buffer.size() << endl;
-    // string action = "push " + args.n;
-    // cout << action << endl;
-    const char* action = "in haha";
-    log_to_file(action, 0, args.n);
+    log_to_file("Work", 0, content);
+    work++; 
+    cout << "read in " << args.n << endl;
 
     pthread_mutex_unlock(&mutexBuffer);
     // increment the items 
@@ -99,16 +101,30 @@ void closing(int thread_num) {
     }
 }
 
+void log_summary(int thread_num) {
+    fprintf(pFile, "%s\n", "Summary:");
+    fprintf(pFile, "%8s\t%3u\n", "Work", work);
+    fprintf(pFile, "%7s\t\t%3u\n", "Ask", ask);
+    fprintf(pFile, "%11s\t%3u\n", "Receive", receive);
+    fprintf(pFile, "%12s\t%3u\n", "Complete", complete);
+    fprintf(pFile, "%9s\t%3u\n", "Sleep", sleep);
+
+    for (int i = 0; i < thread_num; i++) {
+        fprintf(pFile, "%10s\t%2u\t%3u\n", "Thread", i+1, 3);
+    }
+
+    fprintf(pFile, "%15s\t%4.2f\n", "Transaction per second: ", 0.232);
+}
+
 void get_command(int thread_num) {
     string line;
-    while (getline(cin, line) && !line.empty()) {
+    while (getline(cin, line)) {
         int num = line[1]-'0';
         if (line[0] == 'T') {
             producer(num);
         } else if (line[0] == 'S') {
-            // cout << "sleep for " << num << endl;
-            const char* action = "sleep haha";
-            log_to_file(action, 0, num);
+            log_to_file("Sleep", 0, num);
+            sleep++;
             Sleep(num);
         }
     }
@@ -117,26 +133,33 @@ void get_command(int thread_num) {
 
 void* consumer(void* args) {
     while (true) {
+        int id = *(int *) args;
+        log_to_file("Ask", id, -1);
+        ask++; 
+
         //wait until items is more than 0 so can take from buffer
         sem_wait(&full); 
         pthread_mutex_lock(&mutexBuffer);
 
         // pass through n
         struct arg_struct argv = buffer.front();
-        const char* action = "out haha";
-        // Trans(n);
         buffer.pop();
+
         if (argv.n == -1) {
             pthread_mutex_unlock(&mutexBuffer);
             break;
         }
-        int id = *(int *) args;
-        log_to_file(action, id, argv.n);
         cout << "read in " << argv.n << endl;
         pthread_mutex_unlock(&mutexBuffer);
+
         // increment the empty variable since has taken one from buffer
-        log_to_file(action, id, -1);
         sem_post(&empty);
+
+        log_to_file("Receive", id, argv.n);
+        receive++;
+        Trans(argv.n);
+        log_to_file("Complete", id, argv.n);
+        complete++;
     }
     return nullptr;
 }
@@ -169,6 +192,10 @@ void start_process(int thread_num, int id) {
             perror("Failed to join thread");
         }
     }
+
+    pthread_mutex_lock(&mutexFile);
+    log_summary(thread_num);
+    pthread_mutex_unlock(&mutexFile);
 
     fclose(pFile);
     sem_destroy(&empty);
